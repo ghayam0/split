@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import LogoutButton from "@/components/LogoutButton";
 import { getCurrentUser } from "@/lib/supabase/server";
 import "./globals.css";
@@ -29,6 +30,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <header className="site-header">
           <Link href={user ? "/app" : "/"} className="brand">
+            <Logo />
             Split
           </Link>
           <nav className="nav">
