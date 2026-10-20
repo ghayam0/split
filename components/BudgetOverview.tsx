@@ -96,7 +96,7 @@ export default function BudgetOverview({ userId, spent }: { userId: string; spen
           min="0"
           step="0.01"
           required
-          autoFocus
+          autoFocus={editing}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
