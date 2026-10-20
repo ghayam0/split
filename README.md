@@ -11,7 +11,7 @@ Built with Next.js and Supabase (Auth + Postgres with Row Level Security).
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
    ```
-2. In Supabase → SQL Editor, run `supabase/schema.sql`.
+2. In Supabase → SQL Editor, run `supabase/schema.sql`, then `supabase/002_budget_features.sql`.
 3. In Supabase → Authentication → Sign In / Providers → Email, turn off **Confirm email**.
 4. `npm install`
 5. `npm run dev` and open http://localhost:3000

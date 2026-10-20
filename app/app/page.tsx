@@ -9,5 +9,5 @@ export default async function AppPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  return <SpendingTracker email={user.email} />;
+  return <SpendingTracker email={user.email} userId={user.id} />;
 }

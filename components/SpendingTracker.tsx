@@ -1,8 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import BudgetOverview from "@/components/BudgetOverview";
 import CategoryDonut from "@/components/CategoryDonut";
 import { CATEGORIES, DEFAULT_CATEGORY, categoryColor, type Category } from "@/lib/categories";
+import {
+  CURRENCIES,
+  HOME_CURRENCY,
+  formatMoney,
+  getRateToEuro,
+  isThisMonth,
+  parseAmount,
+  type Currency,
+} from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
 import { useHydrated } from "@/lib/useHydrated";
 
@@ -12,11 +22,26 @@ type Spending = {
   amount: number;
   category: Category;
   created_at: string;
+  original_amount?: number | null;
+  original_currency?: string | null;
 };
 
-const money = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
+const money = { format: (value: number) => formatMoney(value) };
 
-export default function SpendingTracker({ email }: { email: string }) {
+// Rows come back with select("*") so the list still loads before the currency columns exist.
+function toSpending(row: Record<string, unknown>): Spending {
+  return {
+    id: row.id as string,
+    description: row.description as string,
+    amount: Number(row.amount),
+    category: row.category as Category,
+    created_at: row.created_at as string,
+    original_amount: row.original_amount == null ? null : Number(row.original_amount),
+    original_currency: (row.original_currency as string | null) ?? null,
+  };
+}
+
+export default function SpendingTracker({ email, userId }: { email: string; userId: string }) {
   const [items, setItems] = useState<Spending[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,20 +49,34 @@ export default function SpendingTracker({ email }: { email: string }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<Category>(DEFAULT_CATEGORY);
+  const [currency, setCurrency] = useState<Currency>(HOME_CURRENCY);
+  const [rate, setRate] = useState<{ currency: string; value: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const hydrated = useHydrated();
 
   useEffect(() => {
     createClient()
       .from("spendings")
-      .select("id, description, amount, category, created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
         if (error) setError(error.message);
-        else setItems((data ?? []).map((row) => ({ ...row, amount: Number(row.amount) })));
+        else setItems((data ?? []).map(toSpending));
         setLoading(false);
       });
   }, []);
+
+  // Preview the conversion as soon as a foreign currency is picked.
+  useEffect(() => {
+    if (currency === HOME_CURRENCY) return;
+    let cancelled = false;
+    getRateToEuro(currency)
+      .then((value) => !cancelled && setRate({ currency, value }))
+      .catch(() => !cancelled && setRate(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,16 +86,26 @@ export default function SpendingTracker({ email }: { email: string }) {
     setSaving(true);
     setError(null);
 
-    const parsed = Number.parseFloat(amount.replace(",", "."));
-    const { data, error } = await createClient()
-      .from("spendings")
-      .insert({
-        description: text,
-        amount: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0,
-        category,
-      })
-      .select("id, description, amount, category, created_at")
-      .single();
+    const paid = parseAmount(amount);
+    const row: Record<string, unknown> = { description: text, amount: paid, category };
+
+    if (currency !== HOME_CURRENCY) {
+      try {
+        const exchange = await getRateToEuro(currency);
+        Object.assign(row, {
+          amount: Math.round(paid * exchange * 100) / 100,
+          original_amount: paid,
+          original_currency: currency,
+          exchange_rate: exchange,
+        });
+      } catch (err) {
+        setSaving(false);
+        setError((err as Error).message);
+        return;
+      }
+    }
+
+    const { data, error } = await createClient().from("spendings").insert(row).select("*").single();
 
     setSaving(false);
     if (error) {
@@ -64,7 +113,7 @@ export default function SpendingTracker({ email }: { email: string }) {
       return;
     }
 
-    setItems((current) => [{ ...data, amount: Number(data.amount) }, ...current]);
+    setItems((current) => [toSpending(data), ...current]);
     setDescription("");
     setAmount("");
   }
@@ -75,13 +124,7 @@ export default function SpendingTracker({ email }: { email: string }) {
     else setItems((current) => current.filter((item) => item.id !== id));
   }
 
-  const thisMonth = useMemo(() => {
-    const now = new Date();
-    return items.filter((item) => {
-      const d = new Date(item.created_at);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
-  }, [items]);
+  const thisMonth = useMemo(() => items.filter((item) => isThisMonth(item.created_at)), [items]);
 
   const monthTotal = thisMonth.reduce((sum, item) => sum + item.amount, 0);
 
@@ -100,6 +143,8 @@ export default function SpendingTracker({ email }: { email: string }) {
         {email && <p className="muted small">Logged in as {email}</p>}
       </div>
 
+      <BudgetOverview userId={userId} spent={monthTotal} />
+
       <section className="card">
         <h2>Add a spending</h2>
         <form onSubmit={handleSubmit} className="form spending-form">
@@ -116,18 +161,39 @@ export default function SpendingTracker({ email }: { email: string }) {
             />
           </label>
 
-          <label className="field">
-            <span>Amount (€)</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </label>
+          <div className="field">
+            <label htmlFor="spending-amount">Amount</label>
+            <div className="amount-group">
+              <input
+                id="spending-amount"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+              <select
+                aria-label="Currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as Currency)}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {currency !== HOME_CURRENCY && (
+              <span className="muted small hint">
+                {rate?.currency === currency
+                  ? `≈ ${formatMoney(parseAmount(amount) * rate.value)} at today's rate (1 ${currency} = ${formatMoney(rate.value)})`
+                  : "Getting today's rate…"}
+              </span>
+            )}
+          </div>
 
           <label className="field">
             <span>Category</span>
@@ -233,7 +299,14 @@ export default function SpendingTracker({ email }: { email: string }) {
                   </span>
                 </div>
                 <div className="item-side">
-                  <span className="item-amount">{money.format(item.amount)}</span>
+                  <span className="item-amount">
+                    {money.format(item.amount)}
+                    {item.original_currency && item.original_amount != null && (
+                      <span className="item-original">
+                        {formatMoney(item.original_amount, item.original_currency)}
+                      </span>
+                    )}
+                  </span>
                   <button
                     type="button"
                     className="icon-button"
