@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import CategoryDonut from "@/components/CategoryDonut";
 import { CATEGORIES, DEFAULT_CATEGORY, categoryColor, type Category } from "@/lib/categories";
 import { createClient } from "@/lib/supabase/client";
+import { useHydrated } from "@/lib/useHydrated";
 
 type Spending = {
   id: string;
@@ -24,6 +25,7 @@ export default function SpendingTracker({ email }: { email: string }) {
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<Category>(DEFAULT_CATEGORY);
   const [saving, setSaving] = useState(false);
+  const hydrated = useHydrated();
 
   useEffect(() => {
     createClient()
@@ -141,7 +143,7 @@ export default function SpendingTracker({ email }: { email: string }) {
           <button
             type="submit"
             className="button field-wide"
-            disabled={saving}
+            disabled={saving || !hydrated}
             data-testid="core-submit"
           >
             {saving ? "Saving…" : "Add spending"}

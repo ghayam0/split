@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useHydrated } from "@/lib/useHydrated";
 
 type Mode = "signup" | "login";
 
@@ -13,6 +14,7 @@ export default function AuthForm({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   const isSignup = mode === "signup";
 
@@ -89,7 +91,7 @@ export default function AuthForm({ mode }: { mode: Mode }) {
         <button
           type="submit"
           className="button button-full"
-          disabled={pending}
+          disabled={pending || !hydrated}
           data-testid={`${mode}-submit`}
         >
           {pending ? "Please wait…" : isSignup ? "Sign up" : "Log in"}
