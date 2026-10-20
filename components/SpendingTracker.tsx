@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CATEGORIES, DEFAULT_CATEGORY, type Category } from "@/lib/categories";
+import CategoryDonut from "@/components/CategoryDonut";
+import { CATEGORIES, DEFAULT_CATEGORY, categoryColor, type Category } from "@/lib/categories";
 import { createClient } from "@/lib/supabase/client";
 
 type Spending = {
@@ -153,6 +154,19 @@ export default function SpendingTracker({ email }: { email: string }) {
         )}
       </section>
 
+      <section className="card bank-card">
+        <div>
+          <h2>Connect your bank</h2>
+          <p className="muted small">
+            Soon Split will be able to add your card payments automatically, so you won&apos;t have
+            to log each one by hand.
+          </p>
+        </div>
+        <button type="button" className="button button-ghost" disabled aria-disabled="true">
+          Coming soon
+        </button>
+      </section>
+
       <section className="card">
         <div className="row-between">
           <h2>This month</h2>
@@ -161,24 +175,35 @@ export default function SpendingTracker({ email }: { email: string }) {
         {byCategory.length === 0 ? (
           <p className="muted small">Add a spending to see how your allowance is split.</p>
         ) : (
-          <ul className="breakdown">
-            {byCategory.map(([cat, total]) => {
-              const pct = monthTotal > 0 ? Math.round((total / monthTotal) * 100) : 0;
-              return (
-                <li key={cat}>
-                  <div className="row-between small">
-                    <span>{cat}</span>
-                    <span>
-                      {money.format(total)} · {pct}%
-                    </span>
-                  </div>
-                  <div className="bar" aria-hidden="true">
-                    <div className="bar-fill" style={{ width: `${pct}%` }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="split-view">
+            <CategoryDonut
+              slices={byCategory.map(([category, total]) => ({ category, total }))}
+            />
+            <ul className="breakdown">
+              {byCategory.map(([cat, total]) => {
+                const pct = monthTotal > 0 ? Math.round((total / monthTotal) * 100) : 0;
+                return (
+                  <li key={cat}>
+                    <div className="row-between small">
+                      <span>
+                        <span className="swatch" style={{ background: categoryColor(cat) }} />
+                        {cat}
+                      </span>
+                      <span>
+                        {money.format(total)} · {pct}%
+                      </span>
+                    </div>
+                    <div className="bar" aria-hidden="true">
+                      <div
+                        className="bar-fill"
+                        style={{ width: `${pct}%`, background: categoryColor(cat) }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </section>
 
@@ -195,7 +220,10 @@ export default function SpendingTracker({ email }: { email: string }) {
                 <div className="item-main">
                   <span className="item-text">{item.description}</span>
                   <span className="item-meta">
-                    <span className="tag">{item.category}</span>
+                    <span className="tag">
+                      <span className="swatch" style={{ background: categoryColor(item.category) }} />
+                      {item.category}
+                    </span>
                     {new Date(item.created_at).toLocaleDateString("en-GB", {
                       day: "numeric",
                       month: "short",

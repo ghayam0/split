@@ -11,3 +11,7 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 
 export const DEFAULT_CATEGORY: Category = "Other";
+
+export function categoryColor(category: Category) {
+  return `var(--cat-${CATEGORIES.indexOf(category) + 1})`;
+}

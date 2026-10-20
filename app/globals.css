@@ -1,15 +1,24 @@
 :root {
-  --bg: #f7f7f4;
-  --surface: #ffffff;
-  --text: #1c1d1f;
-  --muted: #5f6368;
-  --border: #e2e2dc;
-  --accent: #0f7b5f;
-  --accent-hover: #0b6550;
-  --accent-soft: #e3f3ed;
+  --bg: #efe5d1;
+  --surface: #fbf7ee;
+  --text: #1f1d18;
+  --muted: #5c5a52;
+  --border: #e0d5bd;
+  --accent: #0a5c47;
+  --accent-hover: #084a39;
+  --accent-soft: #dcebe2;
   --accent-text: #ffffff;
   --danger: #b3261e;
   --radius: 12px;
+
+  /* One fixed colour per category, in the order of lib/categories.ts. */
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+  --cat-6: #008300;
+  --cat-7: #6250d6;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +33,14 @@
     --accent-soft: #1d3a31;
     --accent-text: #0b1f19;
     --danger: #f2b8b5;
+
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --cat-5: #d55181;
+    --cat-6: #008300;
+    --cat-7: #9085e9;
   }
 }
 
@@ -295,6 +312,24 @@ select {
   padding: 1.25rem;
 }
 
+.bank-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-style: dashed;
+}
+
+.bank-card p {
+  margin: 0;
+}
+
+.bank-card .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
 .spending-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -334,6 +369,109 @@ select {
   height: 100%;
   background: var(--accent);
   border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  margin-right: 0.4rem;
+  vertical-align: -0.05rem;
+}
+
+/* Donut chart */
+.split-view {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 1.5rem;
+  align-items: center;
+  margin-top: 0.75rem;
+}
+
+.split-view .breakdown {
+  margin: 0;
+}
+
+.donut {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.donut-track {
+  stroke: var(--accent-soft);
+}
+
+.donut-segment {
+  cursor: pointer;
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+  animation: donut-draw 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--delay, 0s);
+}
+
+.donut-segment:focus {
+  outline: none;
+}
+
+.donut.has-active .donut-segment {
+  opacity: 0.35;
+}
+
+.donut.has-active .donut-segment.active {
+  opacity: 1;
+  stroke-width: 26;
+}
+
+@keyframes donut-draw {
+  from {
+    stroke-dasharray: 0 var(--circ);
+  }
+}
+
+.donut-center-value {
+  font-size: 19px;
+  font-weight: 700;
+  fill: var(--text);
+}
+
+.donut-center-label {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.hero-preview {
+  width: 100%;
+  max-width: 420px;
+  margin: 1rem auto 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  text-align: left;
+  box-shadow: 0 12px 30px -18px rgba(60, 45, 20, 0.35);
+}
+
+.hero-preview .split-view {
+  grid-template-columns: 140px 1fr;
+  gap: 1rem;
+}
+
+.hero-preview-title {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donut-segment,
+  .bar-fill {
+    animation: none;
+    transition: none;
+  }
 }
 
 .items {
@@ -410,6 +548,19 @@ select {
 @media (max-width: 480px) {
   .spending-form {
     grid-template-columns: 1fr;
+  }
+
+  .split-view {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-preview .split-view {
+    grid-template-columns: 120px 1fr;
   }
 
   .nav {
